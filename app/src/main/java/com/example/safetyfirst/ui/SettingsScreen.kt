@@ -107,12 +107,7 @@ fun SettingScreen(
             onToggle = { viewModel.toggleConnectionsUpdates() }
         )
 
-        SettingToggleButton(
-            title = "Weekly Reports",
-            description = "Summary of security activity",
-            isSelected = viewModel.weeklyReports,
-            onToggle = { viewModel.toggleWeeklyReports() }
-        )
+        
         Spacer(modifier = Modifier.weight(1f)) // pushes the next block to the bottom
 
         Row(
