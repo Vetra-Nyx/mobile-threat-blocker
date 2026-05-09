@@ -66,9 +66,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         // Restore saved VPN UI state when app opens from notification
-        vpnViewModel.setVpnOn(getSavedVpnState())
+        val actuallyRunning = SafetyFirstVpnService.isRunning
+        if (getSavedVpnState() && !actuallyRunning) {
+            saveVpnState(false)
+        }
+        vpnViewModel.setVpnOn(actuallyRunning)
 
-        if (AppPrefs.getAutoStart(this) && !getSavedVpnState()) {
+        if (AppPrefs.getAutoStart(this) && !actuallyRunning) {
             val prepareIntent = VpnService.prepare(this)
             if (prepareIntent != null) {
                 Log.d("VPN_DEBUG", "Auto-start: requesting VPN permission")

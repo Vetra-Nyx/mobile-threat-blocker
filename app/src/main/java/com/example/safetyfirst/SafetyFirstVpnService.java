@@ -29,8 +29,27 @@ public class SafetyFirstVpnService extends VpnService {
     private static final String CHANNEL_ID = "safetyfirst_vpn_channel";
     private static final int FOREGROUND_ID = 1;
 
+    private static final String UPDATE_CHANNEL_ID = "safetyfirst_vpn_updates";
+    private static final int NOTIF_ID_CONNECTED = 2;
+    private static final int NOTIF_ID_DISCONNECTED = 3;
+    private static final int NOTIF_ID_FAILED = 4;
+
+    public static volatile boolean isRunning = false;
+
     private ParcelFileDescriptor vpnInterface;
     private boolean isOn;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        isRunning = true;
+    }
+
+    @Override
+    public void onDestroy() {
+        isRunning = false;
+        super.onDestroy();
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -47,6 +66,7 @@ public class SafetyFirstVpnService extends VpnService {
             establishMinimalVpn();
         } else if (ACTION_STOP.equals(action)) {
             isOn = false;
+            updateForegroundNotification("Stopping...");
             stopVpn();
         }
 
@@ -121,6 +141,7 @@ public class SafetyFirstVpnService extends VpnService {
         }
 
         stopForeground(true);
+        postStatusNotification(NOTIF_ID_DISCONNECTED, "VPN disconnected");
         stopSelf();
     }
 
@@ -161,6 +182,7 @@ public class SafetyFirstVpnService extends VpnService {
             InputStream tunnelInput = socket.getInputStream();
             OutputStream tunnelOutput = socket.getOutputStream();
             sendMessage("VPN connected to gateway");
+            postStatusNotification(NOTIF_ID_CONNECTED, "VPN connected");
 
             byte[] hellobytes = {(byte) 0x51, (byte) 0x29};
             tunnelOutput.write(hellobytes);
@@ -227,6 +249,44 @@ public class SafetyFirstVpnService extends VpnService {
         } catch (Exception e) {
             Log.e("TCP_TEST", "Connection failed: " + e.getMessage());
             sendMessage("ERROR: " + e.getMessage());
+            postStatusNotification(NOTIF_ID_FAILED, "VPN connection failed");
         }
+    }
+
+    private void createUpdateChannelIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    UPDATE_CHANNEL_ID,
+                    "VPN Connection Updates",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm != null) nm.createNotificationChannel(channel);
+        }
+    }
+
+    private void postStatusNotification(int id, String text) {
+        boolean enabled = getSharedPreferences("safetyfirst_prefs", MODE_PRIVATE)
+                .getBoolean("connections_updates", false);
+        if (!enabled) return;
+
+        createUpdateChannelIfNeeded();
+
+        Intent openApp = new Intent(this, MainActivity.class);
+        openApp.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        PendingIntent pi = PendingIntent.getActivity(
+                this, 0, openApp, PendingIntent.FLAG_IMMUTABLE);
+
+        Notification n = new NotificationCompat.Builder(this, UPDATE_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_lock_lock)
+                .setContentTitle("Safety First")
+                .setContentText(text)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .build();
+
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm != null) nm.notify(id, n);
     }
 }
