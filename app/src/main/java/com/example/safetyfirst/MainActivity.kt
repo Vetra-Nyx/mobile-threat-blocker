@@ -23,8 +23,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.safetyfirst.ui.*
 
-
-
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -151,18 +149,12 @@ fun AppNavigation(vpnViewModel: VpnViewModel) {
             )
         }
 
-        composable(Routes.SettingScreen) {
-
-            SettingScreen(
-                vpnViewModel = vpnViewModel,
-                DashsClick = {navController.navigate(Routes.DashboardScreen)
-                },
-                ThreatsClick = {navController.navigate(Routes.ThreatsScreen)
-                },
-                AboutClick = {navController.navigate(Routes.AboutScreen)
-                }
-            )
-        }
+            composable(Routes.SettingScreen) {
+                SettingScreen(
+                    navbar = navbar,
+                    aboutNavigate = { navController.navigate(Routes.AboutScreen) }
+                )
+            }
 
         composable(Routes.ThreatLogScreen) {
             ThreatLogScreen(
