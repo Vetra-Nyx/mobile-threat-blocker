@@ -12,12 +12,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,11 +34,71 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun SettingScreen(
+    vpnViewModel: VpnViewModel,
     viewModel: SettingsViewModel = viewModel(),
     DashsClick: () -> Unit,
     ThreatsClick: () -> Unit,
     AboutClick: () -> Unit
 ) {
+
+    var showWeeklyReport by remember {
+        mutableStateOf(false)
+    }
+
+    val highRisk by vpnViewModel.highRiskCount.collectAsState()
+    val mediumRisk by vpnViewModel.mediumRiskCount.collectAsState()
+    val safeConnections by vpnViewModel.safeConnectionCount.collectAsState()
+
+    if (showWeeklyReport) {
+
+        AlertDialog(
+
+            onDismissRequest = {
+                showWeeklyReport = false
+            },
+
+            title = {
+                Text("Weekly Security Report")
+            },
+
+            text = {
+
+                Column {
+
+                    Text("High Risk Threats: $highRisk")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text("Medium Risk Threats: $mediumRisk")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text("Safe Connections: $safeConnections")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        if (viewModel.weeklyReports)
+                            "Analytics Retention: ENABLED"
+                        else
+                            "Analytics Retention: DISABLED"
+                    )
+                }
+            },
+
+            confirmButton = {
+
+                Button(
+                    onClick = {
+                        showWeeklyReport = false
+                    }
+                ) {
+
+                    Text("Close")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -52,7 +118,7 @@ fun SettingScreen(
         )
 
         Text(
-            text = "Customize your security preference",
+            text = "Customize your security preferences",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF2F3E63)
@@ -60,7 +126,6 @@ fun SettingScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // centered About button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
@@ -82,7 +147,6 @@ fun SettingScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // VPN Auto Start
         SettingToggleButton(
             title = "VPN Auto-Start",
             description = "Automatically connect on app launch",
@@ -90,7 +154,6 @@ fun SettingScreen(
             onToggle = { viewModel.toggleVpnAutoStart() }
         )
 
-        // Threat Alerts
         SettingToggleButton(
             title = "Threat Alerts",
             description = "Get notified of security threats",
@@ -98,7 +161,6 @@ fun SettingScreen(
             onToggle = { viewModel.toggleThreadAlerts() }
         )
 
-        // Connection Updates
         SettingToggleButton(
             title = "Connections Updates",
             description = "VPN connection status changes",
@@ -106,17 +168,49 @@ fun SettingScreen(
             onToggle = { viewModel.toggleConnectionsUpdates() }
         )
 
-        // Weekly Reports
         SettingToggleButton(
             title = "Weekly Reports",
             description = "Summary of security activity",
             isSelected = viewModel.weeklyReports,
-            onToggle = { viewModel.toggleWeeklyReports() }
+            onToggle = {
+
+                viewModel.toggleWeeklyReports()
+
+                if (!viewModel.weeklyReports) {
+                    vpnViewModel.clearAnalytics()
+                }
+            }
         )
+
+        if (viewModel.weeklyReports) {
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+
+                Button(
+                    onClick = {
+                        showWeeklyReport = true
+                    },
+
+                    shape = RoundedCornerShape(16.dp),
+
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2F3E63),
+                        contentColor = Color.White
+                    )
+                ) {
+
+                    Text("Generate Weekly Report")
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // bottom navigation bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()

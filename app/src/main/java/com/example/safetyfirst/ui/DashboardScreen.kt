@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -47,14 +49,79 @@ fun DashboardScreen(
 
     val context = LocalContext.current
     val activity = context.findActivity()
+
     val vpnOn by vpnViewModel.vpnOn.collectAsState()
     val events by vpnViewModel.events.collectAsState()
+    val activeThreat by vpnViewModel.activeThreat.collectAsState()
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            vpnViewModel.refreshEvents()
+    LaunchedEffect(vpnOn) {
+
+        while (vpnOn) {
+
+            if (AppPrefs.getThreatAlerts(context)) {
+
+                vpnViewModel.refreshEvents()
+            }
+
             delay(3000)
         }
+    }
+
+    if (
+        activeThreat != null &&
+        vpnOn &&
+        AppPrefs.getThreatAlerts(context)
+    ) {
+
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text("Threat Detected")
+            },
+
+            text = {
+                Text(
+                    "Potential malicious site detected:\n\n$activeThreat"
+                )
+            },
+
+            confirmButton = {
+                Button(
+                    onClick = {vpnViewModel.clearThreatPopup()
+                    }
+                ) {
+                    Text("Allow")
+                }
+            },
+
+            dismissButton = {
+                Button(
+                    onClick = {stopVpn(context)
+
+                        vpnViewModel.setVpnOn(false)
+
+                        context
+                            .getSharedPreferences(
+                                "vpn_state",
+                                Context.MODE_PRIVATE
+                            )
+                            .edit()
+                            .putBoolean("vpn_on", false)
+                            .apply()
+
+                        Toast.makeText(
+                            context,
+                            "Left Site",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        vpnViewModel.clearThreatPopup()
+                    }
+                ) {
+                    Text("Back to Safety")
+                }
+            }
+        )
     }
 
     Column(
@@ -157,17 +224,20 @@ fun DashboardScreen(
                                 startVpn(context)
 
                                 vpnViewModel.setVpnOn(true)
+
+                                Toast.makeText(
+                                    context,
+                                    "VPN Connected",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
 
                         } else {
 
-                            // stops VPN service
                             stopVpn(context)
 
-                            // updates UI state
                             vpnViewModel.setVpnOn(false)
 
-                            // saves VPN state as OFF
                             context
                                 .getSharedPreferences(
                                     "vpn_state",
@@ -176,6 +246,12 @@ fun DashboardScreen(
                                 .edit()
                                 .putBoolean("vpn_on", false)
                                 .apply()
+
+                            Toast.makeText(
+                                context,
+                                "VPN Disconnected",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     },
 
@@ -383,7 +459,6 @@ fun stopVpn(context: Context) {
         Intent(context, SafetyFirstVpnService::class.java)
 
     intent.action = SafetyFirstVpnService.ACTION_STOP
-
     ContextCompat.startForegroundService(context, intent)
 }
 

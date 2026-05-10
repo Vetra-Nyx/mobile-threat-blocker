@@ -152,10 +152,15 @@ fun AppNavigation(vpnViewModel: VpnViewModel) {
         }
 
         composable(Routes.SettingScreen) {
+
             SettingScreen(
-                DashsClick = { navController.navigate(Routes.DashboardScreen) },
-                ThreatsClick = { navController.navigate(Routes.ThreatsScreen) },
-                AboutClick = { navController.navigate(Routes.AboutScreen) }
+                vpnViewModel = vpnViewModel,
+                DashsClick = {navController.navigate(Routes.DashboardScreen)
+                },
+                ThreatsClick = {navController.navigate(Routes.ThreatsScreen)
+                },
+                AboutClick = {navController.navigate(Routes.AboutScreen)
+                }
             )
         }
 
